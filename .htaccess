@@ -1,0 +1,7 @@
+# Przekierowanie index.html na index.php
+DirectoryIndex index.php
+
+# Opcjonalnie: wymuś przekierowanie 301 dla bezpośredniego wejścia na index.html
+RewriteEngine On
+RewriteCond %{THE_REQUEST} /index\.html [NC]
+RewriteRule ^index\.html$ /index.php [R=301,L]
