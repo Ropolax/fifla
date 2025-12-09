@@ -1,31 +1,77 @@
 body {
     font-family: Arial, sans-serif;
+    background: #f4f6f8;
     padding: 20px;
 }
 
 header h1 {
     text-align: center;
+    margin-bottom: 30px;
 }
 
 fieldset {
-    width: 320px;
+    width: 360px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+label {
+    display: block;
+    margin-bottom: 12px;
+}
+
+input[type="text"],
+input[type="number"] {
+    width: 100%;
+    padding: 6px 8px;
+    margin-top: 4px;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+}
+
+button {
+    margin-top: 12px;
+    width: 100%;
+    padding: 10px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 15px;
+    cursor: pointer;
+}
+button:hover {
+    background: #005fcc;
+}
+
+.output {
+    margin-top: 40px;
+    text-align: center;
 }
 
 .output img {
     display: block;
-    margin: 20px 0;
-    border: 1px solid #333;
+    margin: 15px auto;
+    border: 1px solid #444;
+    background: white;
+}
+
+.download {
+    margin-top: 15px;
 }
 
 .download a {
-    margin-right: 20px;
     display: inline-block;
-    padding: 8px 14px;
-    background: #0080e0;
+    padding: 10px 16px;
+    background: #28a745;
     color: white;
     text-decoration: none;
     border-radius: 4px;
+    margin: 0 10px;
 }
 .download a:hover {
-    background: #005fa3;
+    background: #1f8a35;
 }

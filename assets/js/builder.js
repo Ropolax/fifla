@@ -20,7 +20,6 @@ const R = {
     "9": "1110100"
 };
 
-// tablica pierwszej cyfry
 const PARITY = {
     "0": "LLLLLL", "1": "LLGLGG", "2": "LLGGLG", "3": "LLGGGL",
     "4": "LGLLGG", "5": "LGGLLG", "6": "LGGGLL",
@@ -28,19 +27,18 @@ const PARITY = {
 };
 
 // -----------------------------------------------
-//  Obliczanie cyfry kontrolnej EAN13
+//  cyfra kontrolna
 // -----------------------------------------------
 function checkDigit(num12) {
-    const digits = num12.split("").map(x => +x);
+    const d = num12.split("").map(x => +x);
     let sum = 0;
-    for (let i = 0; i < 12; i++) {
-        sum += digits[i] * (i % 2 === 0 ? 1 : 3);
-    }
+    for (let i = 0; i < 12; i++)
+        sum += d[i] * (i % 2 === 0 ? 1 : 3);
     return (10 - (sum % 10)) % 10;
 }
 
 // -----------------------------------------------
-//  Generowanie bitów kodu EAN13
+//  generuj bity EAN13 + pełny numer
 // -----------------------------------------------
 function generateEAN13(num12) {
     const d = num12.split("");
@@ -48,121 +46,27 @@ function generateEAN13(num12) {
     const first = d[0];
     const parity = PARITY[first];
 
-    let bits = "101"; // start
+    let bits = "101";
 
-    // 6 cyfr lewa strona
     for (let i = 1; i <= 6; i++) {
         const set = parity[i - 1];
         const digit = d[i];
         bits += (set === "L" ? L[digit] : G[digit]);
     }
 
-    bits += "01010"; // middle
+    bits += "01010";
 
-    // prawa strona (R)
-    for (let i = 7; i <= 12; i++) {
-        bits += R[d[i]];
-    }
+    for (let i = 7; i <= 12; i++) bits += R[d[i]];
     bits += R[cd];
 
-    bits += "101"; // end
-    return { bits: bits, fullNumber: num12 + cd };
+    bits += "101";
+
+    return { bits: bits, full: d.join("") + cd };
 }
 
-// -----------------------------------------------
-//  Tworzenie obrazu Canvas
-// -----------------------------------------------
-async function buildImage() {
-    const text = document.getElementById("txt").value;
-    const input = document.getElementById("kod").value.trim();
-    const addG = document.getElementById("gwarancja").checked;
-
-    if (input.length !== 12) {
-        alert("Kod EAN musi mieć dokładnie 12 cyfr!");
-        return;
-    }
-
-    // generacja bitów
-    const ean = generateEAN13(input);
-    const bits = ean.bits;
-
-    // szerokość pojedynczej kreski
-    const barW = 2;
-    const barH = 100;
-
-    // czcionka
-    const fontSize = 22;
-
-    // ładowanie obrazka gwarancji
-    let gwar = null;
-    if (addG) {
-        gwar = await loadImg("assets/images/gwarancja.jpg");
-    }
-
-    // canvas szerokość
-    const eanWidth = bits.length * barW;
-    const textPad = 10;
-    const textH = fontSize + textPad;
-
-    let gwarWidth = addG ? gwar.width : 0;
-    let gwarHeight = addG ? gwar.height : 0;
-
-    // dopasowanie gwarancji do wysokości całości
-    const totalH = textH + barH;
-    if (addG) {
-        const scale = totalH / gwar.height;
-        gwarWidth = Math.floor(gwar.width * scale);
-        gwarHeight = totalH;
-    }
-
-    const totalW = eanWidth + (addG ? gwarWidth : 0);
-
-    const cv = document.createElement("canvas");
-    cv.width = totalW;
-    cv.height = totalH;
-    const ctx = cv.getContext("2d");
-
-    // białe tło
-    ctx.fillStyle = "white";
-    ctx.fillRect(0, 0, cv.width, cv.height);
-
-    // tekst
-    ctx.fillStyle = "black";
-    ctx.font = fontSize + "px Arial";
-    const tw = ctx.measureText(text).width;
-    ctx.fillText(text, (eanWidth - tw) / 2, fontSize);
-
-    // kod kreskowy
-    let x = 0;
-    for (let b of bits) {
-        ctx.fillStyle = b === "1" ? "black" : "white";
-        ctx.fillRect(x, textH, barW, barH);
-        x += barW;
-    }
-
-    // doklejenie gwarancji
-    if (addG) {
-        ctx.drawImage(gwar, eanWidth, 0, gwarWidth, gwarHeight);
-    }
-
-    // konwersja do BMP 1-bit
-    const bmpNormal = canvasToBMP1(cv);
-
-    // lustrzane odbicie
-    const bmpMirror = mirrorBMP1(bmpNormal);
-
-    // podgląd
-    document.getElementById("normal").src = URL.createObjectURL(bmpNormal);
-    document.getElementById("lustro").src = URL.createObjectURL(bmpMirror);
-
-    // linki
-    document.getElementById("dlNormal").href = URL.createObjectURL(bmpNormal);
-    document.getElementById("dlLustro").href = URL.createObjectURL(bmpMirror);
-}
-
-// -----------------------------------------------
-//  Ładowanie obrazka
-// -----------------------------------------------
+// -------------------------------------------------------
+//  wczytanie obrazka
+// -------------------------------------------------------
 function loadImg(src) {
     return new Promise(res => {
         const img = new Image();
@@ -171,9 +75,90 @@ function loadImg(src) {
     });
 }
 
-// -----------------------------------------------
-//  Canvas → BMP 1-bit (bit-packed)
-// -----------------------------------------------
+// -------------------------------------------------------
+//  główna funkcja
+// -------------------------------------------------------
+async function buildImage() {
+    const text = document.getElementById("txt").value;
+    const input = document.getElementById("kod").value.trim();
+    const addG = document.getElementById("gwarancja").checked;
+
+    if (input.length !== 12) {
+        alert("Kod EAN musi mieć 12 cyfr.");
+        return;
+    }
+
+    const ean = generateEAN13(input);
+    const bits = ean.bits;
+    const fullNumber = ean.full;
+
+    const barW = 2;
+    const barH = 70;          // krótsze o ~1/3
+    const textH = 24;
+    const numberH = 20;
+
+    let gwar = null;
+    if (addG) gwar = await loadImg("assets/images/gwarancja.jpg");
+
+    const eanWidth = bits.length * barW;
+    const totalH = textH + barH + numberH;
+
+    let gwarWidth = 0, gwarHeight = 0;
+
+    if (addG) {
+        const scale = totalH / gwar.height;
+        gwarWidth = gwar.width * scale;
+        gwarHeight = totalH;
+    }
+
+    const cv = document.createElement("canvas");
+    cv.width = eanWidth + gwarWidth;
+    cv.height = totalH;
+
+    const ctx = cv.getContext("2d");
+
+    // BIAŁE TŁO
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    // Tekst u góry
+    ctx.fillStyle = "black";
+    ctx.font = "20px Arial";
+    const tw = ctx.measureText(text).width;
+    ctx.fillText(text, (eanWidth - tw) / 2, 20);
+
+    // Rysowanie pasków
+    let x = 0;
+    for (let b of bits) {
+        ctx.fillStyle = b === "1" ? "black" : "white";
+        ctx.fillRect(x, textH, barW, barH);
+        x += barW;
+    }
+
+    // Cyfry pod kodem
+    ctx.font = "18px Arial";
+    const fw = ctx.measureText(fullNumber).width;
+    ctx.fillText(fullNumber, (eanWidth - fw) / 2, textH + barH + 16);
+
+    // Doklej gwarancję
+    if (addG) ctx.drawImage(gwar, eanWidth, 0, gwarWidth, gwarHeight);
+
+    // BMP normalny
+    const bmpNormal = canvasToBMP1(cv);
+
+    // lustro
+    const bmpMirror = await mirrorBMP1(bmpNormal);
+
+    document.getElementById("normal").src = URL.createObjectURL(bmpNormal);
+    document.getElementById("lustro").src = URL.createObjectURL(bmpMirror);
+
+    document.getElementById("dlNormal").href = URL.createObjectURL(bmpNormal);
+    document.getElementById("dlLustro").href = URL.createObjectURL(bmpMirror);
+}
+
+// -------------------------------------------------------
+//  Canvas → BMP 1-bit (CZARNY = 1, BIAŁY = 0)
+// -------------------------------------------------------
 function canvasToBMP1(canvas) {
     const w = canvas.width;
     const h = canvas.height;
@@ -191,15 +176,14 @@ function canvasToBMP1(canvas) {
 
     let p = 0;
 
-    // --- FILE HEADER ---
-    dv.setUint8(p, 0x42); p++;
-    dv.setUint8(p, 0x4D); p++;
-
+    // FILE HEADER
+    dv.setUint8(p++, 0x42);
+    dv.setUint8(p++, 0x4D);
     dv.setUint32(p, fileSize, true); p += 4;
     dv.setUint32(p, 0, true); p += 4;
     dv.setUint32(p, headerSize, true); p += 4;
 
-    // --- INFO HEADER ---
+    // DIB HEADER
     dv.setUint32(p, 40, true); p += 4;
     dv.setInt32(p, w, true); p += 4;
     dv.setInt32(p, -h, true); p += 4;
@@ -215,42 +199,39 @@ function canvasToBMP1(canvas) {
     dv.setUint32(p, 2, true); p += 4;
     dv.setUint32(p, 2, true); p += 4;
 
-    // paleta (czarny, biały)
-    dv.setUint32(p, 0x00000000, true); p += 4;
-    dv.setUint32(p, 0x00FFFFFF, true); p += 4;
+    // PALETA – poprawiona:
+    dv.setUint32(p, 0x00FFFFFF, true); p += 4; // kolor 0 = biały
+    dv.setUint32(p, 0x00000000, true); p += 4; // kolor 1 = czarny
 
-    // --- PIXELS ---
     let offset = p;
 
     for (let y = 0; y < h; y++) {
-        let bitPos = 7;
-        let byte = 0;
+        let byte = 0, bitPos = 7;
+
         for (let x = 0; x < w; x++) {
             const idx = (y * w + x) * 4;
-            const r = data[idx];
-            const v = r < 128 ? 1 : 0;
-            byte |= v << bitPos;
+            const val = data[idx] < 128 ? 1 : 0; // czarny = 1
+            byte |= val << bitPos;
             bitPos--;
+
             if (bitPos < 0) {
                 dv.setUint8(offset++, byte);
                 byte = 0;
                 bitPos = 7;
             }
         }
-        if (bitPos !== 7) {
-            dv.setUint8(offset++, byte);
-        }
-        while ((offset - p) % rowBytes !== 0) {
-            dv.setUint8(offset++, 0);
-        }
+
+        if (bitPos !== 7) dv.setUint8(offset++, byte);
+
+        while ((offset - p) % rowBytes !== 0) dv.setUint8(offset++, 0);
     }
 
     return new Blob([buf], { type: "image/bmp" });
 }
 
-// -----------------------------------------------
-//  Lustro w poziomie BMP 1-bit
-// -----------------------------------------------
+// -------------------------------------------------------
+//  lustrzane odbicie 1-bit BMP
+// -------------------------------------------------------
 function mirrorBMP1(blob) {
     return new Promise(res => {
         const fr = new FileReader();
@@ -264,19 +245,17 @@ function mirrorBMP1(blob) {
 
             const rowBytes = Math.ceil(w / 32) * 4;
 
-            const img = new Uint8Array(buf, offset);
-
-            const out = new Uint8Array(img.length);
+            const src = new Uint8Array(buf, offset);
+            const out = new Uint8Array(src.length);
 
             for (let y = 0; y < h; y++) {
-                const rowStart = y * rowBytes;
-                for (let byte = 0; byte < rowBytes; byte++) {
-                    const b = img[rowStart + byte];
-                    let rb = 0;
-                    for (let i = 0; i < 8; i++) {
-                        rb |= ((b >> i) & 1) << (7 - i);
-                    }
-                    out[rowStart + (rowBytes - 1 - byte)] = rb;
+                const base = y * rowBytes;
+                for (let b = 0; b < rowBytes; b++) {
+                    const val = src[base + b];
+                    let rev = 0;
+                    for (let i = 0; i < 8; i++)
+                        rev |= ((val >> i) & 1) << (7 - i);
+                    out[base + (rowBytes - 1 - b)] = rev;
                 }
             }
 
@@ -289,7 +268,6 @@ function mirrorBMP1(blob) {
     });
 }
 
-// -----------------------------------------------
 document.getElementById("genBtn").addEventListener("click", e => {
     e.preventDefault();
     buildImage();
