@@ -1,0 +1,31 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+header h1 {
+    text-align: center;
+}
+
+fieldset {
+    width: 320px;
+}
+
+.output img {
+    display: block;
+    margin: 20px 0;
+    border: 1px solid #333;
+}
+
+.download a {
+    margin-right: 20px;
+    display: inline-block;
+    padding: 8px 14px;
+    background: #0080e0;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+}
+.download a:hover {
+    background: #005fa3;
+}
