@@ -9,160 +9,197 @@ $addWarranty = true;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $txt = $_POST['txt'] ?? "";
-    $kod12 = $_POST['kod'] ?? "";
-    $addWarranty = isset($_POST['gwarancja']);
+    if (isset($_POST['reset'])) {
 
-    // NOWE – nazwa pliku
-    $filename = trim($_POST['filename'] ?? "");
-    if ($filename !== "" && !preg_match('/^[A-Za-z0-9_-]+$/', $filename)) {
-        $error = "Nazwa pliku może zawierać tylko litery, cyfry, myślnik i podkreślenie. Bez spacji!";
-    }
-
-    if (!$error) {
-        if (strlen($kod12) != 12 || !ctype_digit($kod12)) {
-            $error = "Kod EAN musi mieć 12 cyfr!";
-        } else {
-
-            // ======================
-            // EAN13 checksum
-            // ======================
-            function checksum($code12)
-            {
-                $sum = 0;
-                for ($i = 0; $i < 12; $i++) {
-                    $d = intval($code12[$i]);
-                    $sum += ($i % 2 === 0) ? $d : $d * 3;
-                }
-                return (10 - ($sum % 10)) % 10;
+        // Wyczyść folder output
+        if (file_exists("output")) {
+            $files = glob("output/*");
+            foreach ($files as $f) {
+                if (is_file($f)) unlink($f);
             }
+        }
 
-            $chk = checksum($kod12);
-            $full = $kod12 . $chk;
+        // Wyzeruj pola formularza
+        $txt = "";
+        $kod12 = "";
+        $filename = "";
+        $addWarranty = true;
+        $error = "";
+        $normalSrc = "";
+        $mirrorSrc = "";
 
-            // ======================
-            // EAN13 tables
-            // ======================
-            $L = ["0" => "0001101", "1" => "0011001", "2" => "0010011", "3" => "0111101", "4" => "0100011", "5" => "0110001", "6" => "0101111", "7" => "0111011", "8" => "0110111", "9" => "0001011"];
-            $G = ["0" => "0100111", "1" => "0110011", "2" => "0011011", "3" => "0100001", "4" => "0011101", "5" => "0111001", "6" => "0000101", "7" => "0010001", "8" => "0001001", "9" => "0010111"];
-            $R = ["0" => "1110010", "1" => "1100110", "2" => "1101100", "3" => "1000010", "4" => "1011100", "5" => "1001110", "6" => "1010000", "7" => "1000100", "8" => "1001000", "9" => "1110100"];
-            $PARITY = ["0" => "LLLLLL", "1" => "LLGLGG", "2" => "LLGGLG", "3" => "LLGGGL", "4" => "LGLLGG", "5" => "LGGLLG", "6" => "LGGGLL", "7" => "LGLGLG", "8" => "LGLGGL", "9" => "LGGLGL"];
+    } else {
 
-            // ======================
-            // Encode bits
-            // ======================
-            $f = $full[0];
-            $left = substr($full, 1, 6);
-            $right = substr($full, 7);
-            $pat = $PARITY[$f];
+        $txt = $_POST['txt'] ?? "";
+        $kod12 = $_POST['kod'] ?? "";
+        $addWarranty = isset($_POST['gwarancja']);
 
-            $bits = "101"; // left guard
-            for ($i = 0; $i < 6; $i++) {
-                $d = $left[$i];
-                $bits .= ($pat[$i] == "L") ? $L[$d] : $G[$d];
-            }
-            $bits .= "01010"; // center guard
-            for ($i = 0; $i < 6; $i++) {
-                $bits .= $R[$right[$i]];
-            }
-            $bits .= "101"; // right guard
+        // NOWE – nazwa pliku
+        $filename = trim($_POST['filename'] ?? "");
+        if ($filename !== "" && !preg_match('/^[A-Za-z0-9_-]+$/', $filename)) {
+            $error = "Nazwa pliku może zawierać tylko litery, cyfry, myślnik i podkreślenie. Bez spacji!";
+        }
 
-            // ======================
-            // IMAGE parameters
-            // ======================
-            $barW = 2;
-            $barH = 40;
-            $digitH = 20;
-            $marginTop = 20;
-            $barsWidth = strlen($bits) * $barW;
-            $leftMargin = 15 * $barW;
-
-            // Warranty
-            if ($addWarranty && file_exists("assets/images/gwarancja.jpg")) {
-                $gw = imagecreatefromjpeg("assets/images/gwarancja.jpg");
+        if (!$error) {
+            if (strlen($kod12) != 12 || !ctype_digit($kod12)) {
+                $error = "Kod EAN musi mieć 12 cyfr!";
             } else {
-                $gw = imagecreatetruecolor(1, 1);
-                $white = imagecolorallocate($gw, 255, 255, 255);
-                imagefilledrectangle($gw, 0, 0, 0, 0, $white);
-            }
-            $gwW = imagesx($gw);
-            $gwH = imagesy($gw);
-            $scale = ($barH + $digitH + $marginTop) / $gwH;
-            $newGW = imagescale($gw, $gwW * $scale, $barH + $digitH + $marginTop);
 
-            $gap = 10;
-            $imgW = $barsWidth + imagesx($newGW) + $leftMargin + $gap;
+                // ======================
+                // EAN13 checksum
+                // ======================
+                function checksum($code12)
+                {
+                    $sum = 0;
+                    for ($i = 0; $i < 12; $i++) {
+                        $d = intval($code12[$i]);
+                        $sum += ($i % 2 === 0) ? $d : $d * 3;
+                    }
+                    return (10 - ($sum % 10)) % 10;
+                }
 
-            $imgH = $barH + $digitH + $marginTop;
+                $chk = checksum($kod12);
+                $full = $kod12 . $chk;
 
-            $img = imagecreate($imgW, $imgH);
-            $white = imagecolorallocate($img, 255, 255, 255);
-            $black = imagecolorallocate($img, 0, 0, 0);
-            imagefilledrectangle($img, 0, 0, $imgW, $imgH, $white);
+                // ======================
+                // EAN13 tables
+                // ======================
+                $L = ["0" => "0001101", "1" => "0011001", "2" => "0010011", "3" => "0111101", "4" => "0100011", "5" => "0110001", "6" => "0101111", "7" => "0111011", "8" => "0110111", "9" => "0001011"];
+                $G = ["0" => "0100111", "1" => "0110011", "2" => "0011011", "3" => "0100001", "4" => "0011101", "5" => "0111001", "6" => "0000101", "7" => "0010001", "8" => "0001001", "9" => "0010111"];
+                $R = ["0" => "1110010", "1" => "1100110", "2" => "1101100", "3" => "1000010", "4" => "1011100", "5" => "1001110", "6" => "1010000", "7" => "1000100", "8" => "1001000", "9" => "1110100"];
+                $PARITY = ["0" => "LLLLLL", "1" => "LLGLGG", "2" => "LLGGLG", "3" => "LLGGGL", "4" => "LGLLGG", "5" => "LGGLLG", "6" => "LGGGLL", "7" => "LGLGLG", "8" => "LGLGGL", "9" => "LGGLGL"];
 
-            // ======================
-            // TEXT above bars
-            // ======================
-            $fontPath = "assets/fonts/arial.ttf";
-            $fontSize = 16;
-            if ($txt) {
+                // ======================
+                // Encode bits
+                // ======================
+                $f = $full[0];
+                $left = substr($full, 1, 6);
+                $right = substr($full, 7);
+                $pat = $PARITY[$f];
+
+                $bits = "101"; // left guard
+                for ($i = 0; $i < 6; $i++) {
+                    $d = $left[$i];
+                    $bits .= ($pat[$i] == "L") ? $L[$d] : $G[$d];
+                }
+                $bits .= "01010"; // center guard
+                for ($i = 0; $i < 6; $i++) {
+                    $bits .= $R[$right[$i]];
+                }
+                $bits .= "101"; // right guard
+
+                // ======================
+                // IMAGE parameters
+                // ======================
+                $barW = 2;
+                $barH = 40;
+                $digitH = 20;
+                $marginTop = 20;
+                $barsWidth = strlen($bits) * $barW;
+                $leftMargin = 15 * $barW;
+
+                // Warranty
+                if ($addWarranty && file_exists("assets/images/gwarancja.jpg")) {
+                    $gw = imagecreatefromjpeg("assets/images/gwarancja.jpg");
+                } else {
+                    $gw = imagecreatetruecolor(1, 1);
+                    $white = imagecolorallocate($gw, 255, 255, 255);
+                    imagefilledrectangle($gw, 0, 0, 0, 0, $white);
+                }
+                $gwW = imagesx($gw);
+                $gwH = imagesy($gw);
+                $scale = ($barH + $digitH + $marginTop) / $gwH;
+                $newGW = imagescale($gw, $gwW * $scale, $barH + $digitH + $marginTop);
+
+                $gap = 10;
+                $imgW = $barsWidth + imagesx($newGW) + $leftMargin + $gap;
+
+                $imgH = $barH + $digitH + $marginTop;
+
+                $img = imagecreate($imgW, $imgH);
+                $white = imagecolorallocate($img, 255, 255, 255);
+                $black = imagecolorallocate($img, 0, 0, 0);
+                imagefilledrectangle($img, 0, 0, $imgW, $imgH, $white);
+
+                // ======================
+                // TEXT above bars
+                // ======================
+                $fontPath = "assets/fonts/arial.ttf";
+                $fontSize = 16;
+                if ($txt) {
+                    if (file_exists($fontPath)) {
+                        $bbox = imagettfbbox($fontSize, 0, $fontPath, $txt);
+                        $textWidth = $bbox[2] - $bbox[0];
+                        $textX = ($barsWidth / 2) - ($textWidth / 2) + $leftMargin;
+                        $textY = 16;
+                        imagettftext($img, $fontSize, 0, $textX, $textY, $black, $fontPath, $txt);
+                    } else {
+                        imagestring($img, 5, 10, 2, $txt, $black);
+                    }
+                }
+
+                // ======================
+                // DRAW BARS
+                // ======================
+                $guardH = $barH + $digitH;
+                $x = $leftMargin;
+                for ($i = 0; $i < strlen($bits); $i++) {
+                    if (($i < 3) || ($i >= 45 && $i < 50) || ($i >= 92 && $i < 95)) {
+                        $h = $guardH;
+                    } else {
+                        $h = $barH;
+                    }
+                    if ($bits[$i] == "1") {
+                        imagefilledrectangle($img, $x, $marginTop, $x + $barW - 1, $marginTop + $h, $black);
+                    }
+                    $x += $barW;
+                }
+
+                // ======================
+                // DRAW DIGITS
+                // ======================
+                $fontSize = 14;
                 if (file_exists($fontPath)) {
-                    $bbox = imagettfbbox($fontSize, 0, $fontPath, $txt);
-                    $textWidth = $bbox[2] - $bbox[0];
-                    $textX = ($barsWidth / 2) - ($textWidth / 2) + $leftMargin;
-                    $textY = 16;
-                    imagettftext($img, $fontSize, 0, $textX, $textY, $black, $fontPath, $txt);
+                    imagettftext($img, $fontSize, 0, 0, $marginTop + $barH + $digitH, $black, $fontPath, $full[0]);
+
+                    $leftX = $leftMargin + 3 * $barW;
+                    for ($i = 0; $i < 6; $i++) {
+                        $dx = $leftX + $i * 7 * $barW;
+                        imagettftext($img, $fontSize, 0, $dx, $marginTop + $barH + $digitH, $black, $fontPath, $full[$i + 1]);
+                    }
+
+                    $rightX = $leftMargin + 50 * $barW;
+                    for ($i = 0; $i < 6; $i++) {
+                        $dx = $rightX + $i * 7 * $barW;
+                        imagettftext($img, $fontSize, 0, $dx, $marginTop + $barH + $digitH, $black, $fontPath, $full[$i + 7]);
+                    }
+                }
+
+                // Warranty image copy
+                $gap = 10;
+                imagecopy($img, $newGW, $barsWidth + $leftMargin + $gap, 0, 0, 0, imagesx($newGW), imagesy($newGW));
+
+                // ======================
+                // CLEAN OUTPUT FOLDER
+                // ======================
+
+                if (!file_exists("output")) mkdir("output");
+
+                if (!file_exists("output")) {
+                    mkdir("output");
                 } else {
-                    imagestring($img, 5, 10, 2, $txt, $black);
+                    $files = glob("output/*");
+                    foreach ($files as $f) {
+                        if (is_file($f)) {
+                            unlink($f);
+                        }
+                    }
                 }
             }
-
-            // ======================
-            // DRAW BARS
-            // ======================
-            $guardH = $barH + $digitH;
-            $x = $leftMargin;
-            for ($i = 0; $i < strlen($bits); $i++) {
-                if (($i < 3) || ($i >= 45 && $i < 50) || ($i >= 92 && $i < 95)) {
-                    $h = $guardH;
-                } else {
-                    $h = $barH;
-                }
-                if ($bits[$i] == "1") {
-                    imagefilledrectangle($img, $x, $marginTop, $x + $barW - 1, $marginTop + $h, $black);
-                }
-                $x += $barW;
-            }
-
-            // ======================
-            // DRAW DIGITS
-            // ======================
-            $fontSize = 14;
-            if (file_exists($fontPath)) {
-                imagettftext($img, $fontSize, 0, 0, $marginTop + $barH + $digitH, $black, $fontPath, $full[0]);
-
-                $leftX = $leftMargin + 3 * $barW;
-                for ($i = 0; $i < 6; $i++) {
-                    $dx = $leftX + $i * 7 * $barW;
-                    imagettftext($img, $fontSize, 0, $dx, $marginTop + $barH + $digitH, $black, $fontPath, $full[$i + 1]);
-                }
-
-                $rightX = $leftMargin + 50 * $barW;
-                for ($i = 0; $i < 6; $i++) {
-                    $dx = $rightX + $i * 7 * $barW;
-                    imagettftext($img, $fontSize, 0, $dx, $marginTop + $barH + $digitH, $black, $fontPath, $full[$i + 7]);
-                }
-            }
-
-            // Warranty image copy
-            $gap = 10;
-            imagecopy($img, $newGW, $barsWidth + $leftMargin + $gap, 0, 0, 0, imagesx($newGW), imagesy($newGW));
-
 
             // ======================
             // SAVE NORMAL & MIRROR BMP
             // ======================
-            if (!file_exists("output")) mkdir("output");
 
             if ($filename === "") {
                 $normalFile = "output/output-normal.bmp";
@@ -200,21 +237,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <body>
     <header>
-        <h1>Generator kodów</h1>
+        <h1>Generator kodów EAN13</h1>
     </header>
     <section class="input">
         <fieldset>
-            <legend>Barcode Generator</legend>
             <form method="POST" action="">
-                <label>Wprowadź tekst:
-                    <input type="text" maxlength="17" name="txt" value="<?= htmlspecialchars($txt) ?>">
+                <label>Wprowadź tekst:<span>*</span>
+                    <input type="text" maxlength="17" name="txt" required
+                    value="<?= htmlspecialchars($txt) ?>"
+                    pattern="[A-Za-z0-9]+">
                 </label><br>
 
-                <label>Wprowadź kod EAN13 (12 cyfr):
-                    <input type="text" minlength="12" maxlength="12" name="kod" value="<?= htmlspecialchars($kod12) ?>" pattern="[0-9]+">
+                <label>Wprowadź kod EAN13:<span>*</span>
+                    <input type="text" minlength="12" maxlength="12" name="kod" required
+                        value="<?= htmlspecialchars($kod12) ?>"
+                        pattern="[0-9]+">
                 </label><br>
 
-                <label>Nazwa pliku (bez spacji):
+                <label>Nazwa pliku:
                     <input type="text" name="filename" maxlength="32"
                         value="<?= htmlspecialchars($filename) ?>"
                         pattern="[A-Za-z0-9_-]+">
@@ -226,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </label><br>
 
                 <button type="submit">Generuj</button>
-                <button type="reset">Reset</button>
+                <button type="submit" name="reset" value="1">Reset</button>
             </form>
             <?php if ($error) echo "<p style='color:red;'>$error</p>"; ?>
         </fieldset>
@@ -252,7 +292,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <footer style="text-align:center; margin-top:40px; color:#555; font-size:0.9em;">
         © <?= date('Y') ?> Wojciech Wesołowski • kontakt: <a href="mailto:wo.wesolowski@gmail.com">wo.wesolowski@gmail.com</a>
     </footer>
-
 </body>
 
 </html>
