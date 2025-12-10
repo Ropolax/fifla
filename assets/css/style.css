@@ -1,77 +1,122 @@
-body {
+/* RESET */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
     font-family: Arial, sans-serif;
-    background: #f4f6f8;
+}
+
+body {
+    background-color: #f5f5f5;
+    color: #333;
     padding: 20px;
 }
 
-header h1 {
+header {
     text-align: center;
     margin-bottom: 30px;
 }
 
-fieldset {
-    width: 360px;
-    margin: 0 auto;
+header h1 {
+    font-size: 2em;
+    color: #222;
+}
+
+/* FORM */
+section.input {
+    background: #fff;
     padding: 20px;
-    background: white;
+    max-width: 600px;
+    margin: 0 auto 30px;
     border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+fieldset {
     border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 20px;
+}
+
+legend {
+    font-weight: bold;
+    padding: 0 10px;
 }
 
 label {
     display: block;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
+    font-size: 1em;
 }
 
-input[type="text"],
-input[type="number"] {
+input[type="text"], input[type="number"] {
     width: 100%;
-    padding: 6px 8px;
-    margin-top: 4px;
-    border: 1px solid #aaa;
+    padding: 8px 10px;
+    font-size: 1em;
+    border: 1px solid #ccc;
     border-radius: 4px;
+}
+
+input[type="checkbox"] {
+    margin-right: 5px;
 }
 
 button {
-    margin-top: 12px;
-    width: 100%;
-    padding: 10px;
-    background: #007bff;
-    color: white;
+    background-color: #007bff;
+    color: #fff;
+    padding: 10px 15px;
     border: none;
     border-radius: 4px;
-    font-size: 15px;
     cursor: pointer;
+    font-size: 1em;
+    margin-top: 10px;
 }
+
 button:hover {
-    background: #005fcc;
+    background-color: #0056b3;
 }
 
-.output {
-    margin-top: 40px;
-    text-align: center;
+/* OUTPUT – powiększone 2x */
+section.output {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 40px; /* większy odstęp między blokami */
 }
 
-.output img {
+.preview {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    padding: 20px; /* powiększony padding */
+    border-radius: 6px;
+    background: #fff;
+    gap: 30px; /* większy odstęp między obrazem a przyciskiem */
+}
+
+.preview img {
+    max-width: 400px; /* 2x większe */
     display: block;
-    margin: 15px auto;
-    border: 1px solid #444;
-    background: white;
 }
 
-.download {
-    margin-top: 15px;
+.buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 20px; /* większy odstęp między przyciskami */
 }
 
-.download a {
-    display: inline-block;
-    padding: 10px 16px;
-    background: #28a745;
-    color: white;
-    text-decoration: none;
-    border-radius: 4px;
-    margin: 0 10px;
+.buttons a button {
+    width: 100%;
+    padding: 12px 20px; /* większe przyciski */
+    font-size: 1.1em;
 }
-.download a:hover {
-    background: #1f8a35;
+
+
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    section.output {
+        flex-direction: column;
+        gap: 20px;
+    }
 }
