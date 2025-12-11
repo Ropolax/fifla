@@ -244,8 +244,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" action="">
                 <label>Wprowadź tekst:<span>*</span>
                     <input type="text" maxlength="17" name="txt" required
-                    value="<?= htmlspecialchars($txt) ?>"
-                    pattern="[A-Za-z0-9]+">
+                    value="<?= htmlspecialchars($txt) ?>">
+
                 </label><br>
 
                 <label>Wprowadź kod EAN13:<span>*</span>
